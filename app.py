@@ -17,7 +17,7 @@ CORS(app)  # Enable CORS for all routes
 # EMAIL CONFIGURATION - UPDATE THESE!
 # =============================================
 SENDER_EMAIL = "teamsmartenergy12@gmail.com"  # Your email
-SENDER_PASSWORD = "yzut aang kjfm sxud"    # Your Gmail app password
+SENDER_PASSWORD = "yzut aang kjfm sxud" 
 # =============================================
 
 # Load model (if exists)
@@ -643,4 +643,5 @@ if __name__ == '__main__':
     
     print("="*60)
     
+
     app.run(debug=True, port=5000, host='0.0.0.0')
