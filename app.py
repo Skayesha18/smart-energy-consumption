@@ -22,7 +22,7 @@ CORS(app, origins=[
     'http://127.0.0.1:5000', 
     'http://localhost:3000',
     'https://smart-energy-consumption-2.onrender.com'  # Your Render URL
-])
+], supports_credentials=True)
 
 # =============================================
 # EMAIL CONFIGURATION - UPDATE THESE!
@@ -502,9 +502,9 @@ Email: {SENDER_EMAIL}
 # ===================== PREDICTION ROUTES =====================
 
 @app.route('/api/predict', methods=['POST'])
-@login_required
+@login_required  # <-- THIS FIXES THE LOGIN ERROR
 def api_predict():
-    """API endpoint for energy prediction"""
+    """API endpoint for energy prediction - REQUIRES LOGIN"""
     try:
         data = request.json
         
@@ -530,8 +530,8 @@ def api_predict():
                 'temperature': temperature,
                 'humidity': humidity,
                 'occupancy': occupancy,
-                'hvac': 'on' if 'Air Conditioner' in devices else 'off',
-                'lighting': 'on' if 'Lighting' in devices else 'off',
+                'hvac': 'on' if any('Air Conditioner' in d for d in devices) else 'off',
+                'lighting': 'on' if any('Lighting' in d for d in devices) else 'off',
                 'renewable': 10,
                 'day': datetime.now().weekday(),
                 'hour': hour
@@ -1401,7 +1401,7 @@ def debug_page():
                     <li><code>POST /api/logout</code> - User logout</li>
                     <li><code>GET /api/check-auth</code> - Check authentication</li>
                     <li><code>POST /api/contact</code> - Contact form</li>
-                    <li><code>POST /api/predict</code> - Energy prediction</li>
+                    <li><code>POST /api/predict</code> - Energy prediction (REQUIRES LOGIN)</li>
                     <li><code>GET /api/predictions</code> - Get predictions</li>
                     <li><code>POST /api/chatbot</code> - AI assistant</li>
                     <li><code>POST /api/review</code> - Submit review</li>
