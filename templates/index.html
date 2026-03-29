@@ -3546,7 +3546,7 @@
         }
 
         // ===================== AUTHENTICATION =====================
-        async function login() {
+        function login() {
             const username = document.getElementById('loginUsername').value.trim();
             const password = document.getElementById('loginPassword').value.trim();
             
@@ -3555,37 +3555,32 @@
                 return;
             }
             
-            try {
-                const response = await fetch('/api/login', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ username, password })
-                });
-                
-                const result = await response.json();
-                
-                if (result.success) {
-                    currentUser = result.user;
-                    localStorage.setItem('smartEnergyCurrentUser', JSON.stringify(currentUser));
-                    document.getElementById('loginPage').style.display = 'none';
-                    document.getElementById('mainWebsite').style.display = 'block';
-                    document.querySelector('.navbar').style.display = 'flex';
-                    showSection('home');
-                    initializeApp();
-                    updateProfile();
-                    loadPredictionHistory();
-                } else {
-                    alert(result.error || "Invalid username or password");
-                }
-            } catch (error) {
-                console.error('Login error:', error);
-                alert("Network error. Please check if the backend server is running.");
+            // Get users from localStorage
+            const users = JSON.parse(localStorage.getItem('smartEnergyUsers')) || [];
+            const user = users.find(u => u.username === username && u.password === password);
+            
+            if (user) {
+                currentUser = {
+                    id: user.id,
+                    name: user.name,
+                    email: user.email,
+                    username: user.username,
+                    joinedDate: user.joinedDate
+                };
+                localStorage.setItem('smartEnergyCurrentUser', JSON.stringify(currentUser));
+                document.getElementById('loginPage').style.display = 'none';
+                document.getElementById('mainWebsite').style.display = 'block';
+                document.querySelector('.navbar').style.display = 'flex';
+                showSection('home');
+                initializeApp();
+                updateProfile();
+                loadPredictionHistory();
+            } else {
+                alert("Invalid username or password. Please register first.");
             }
         }
 
-        async function register() {
+        function register() {
             const name = document.getElementById('registerName').value.trim();
             const email = document.getElementById('registerEmail').value.trim();
             const username = document.getElementById('registerUsername').value.trim();
@@ -3612,28 +3607,47 @@
                 return;
             }
             
-            try {
-                const response = await fetch('/api/register', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ name, email, username, password })
-                });
-                
-                const result = await response.json();
-                
-                if (result.success) {
-                    alert(result.message);
-                    showLogin();
-                    document.getElementById('registerForm').reset();
-                } else {
-                    alert(result.error || "Registration failed");
-                }
-            } catch (error) {
-                console.error('Registration error:', error);
-                alert("Network error. Please try again.");
+            // Get existing users
+            const users = JSON.parse(localStorage.getItem('smartEnergyUsers')) || [];
+            
+            // Check if username already exists
+            if (users.some(u => u.username === username)) {
+                alert("Username already exists. Please choose a different username.");
+                return;
             }
+            
+            // Check if email already exists
+            if (users.some(u => u.email === email)) {
+                alert("Email already registered. Please use a different email.");
+                return;
+            }
+            
+            // Create new user
+            const newUser = {
+                id: Date.now(),
+                name: name,
+                email: email,
+                username: username,
+                password: password,
+                joinedDate: new Date().toISOString()
+            };
+            
+            users.push(newUser);
+            localStorage.setItem('smartEnergyUsers', JSON.stringify(users));
+            
+            alert("Registration successful! Please login with your credentials.");
+            showLogin();
+            document.getElementById('registerForm').reset();
+        }
+
+        function showRegister() {
+            document.getElementById('loginPage').style.display = 'none';
+            document.getElementById('registerPage').style.display = 'flex';
+        }
+
+        function showLogin() {
+            document.getElementById('registerPage').style.display = 'none';
+            document.getElementById('loginPage').style.display = 'flex';
         }
 
         function logout() {
@@ -3710,7 +3724,7 @@
             const dropdown = document.getElementById('profileDropdown');
             const profileIcon = document.querySelector('.profile-icon');
             
-            if (dropdown.classList.contains('active') && 
+            if (dropdown && dropdown.classList.contains('active') && 
                 !dropdown.contains(event.target) && 
                 !profileIcon.contains(event.target)) {
                 dropdown.classList.remove('active');
@@ -5606,7 +5620,7 @@
                 
                 const row = document.createElement('tr');
                 row.innerHTML = `
-                    <td>
+                    <tr>
                         <div style="font-weight: 500;">${date.toLocaleDateString('en-IN')}</div>
                         <div style="font-size: 12px; color: #a5b1c2;">${timeStr}</div>
                     </td>
