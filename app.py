@@ -15,7 +15,14 @@ from functools import wraps
 
 app = Flask(__name__, static_folder='static', template_folder='templates')
 app.secret_key = 'smart-energy-ai-secret-key-2024'
-CORS(app, origins=['http://localhost:5000', 'http://127.0.0.1:5000', 'http://localhost:3000'])
+
+# Updated CORS to allow your Render URL
+CORS(app, origins=[
+    'http://localhost:5000', 
+    'http://127.0.0.1:5000', 
+    'http://localhost:3000',
+    'https://smart-energy-consumption-2.onrender.com'  # Your Render URL
+])
 
 # =============================================
 # EMAIL CONFIGURATION - UPDATE THESE!
@@ -364,7 +371,7 @@ def api_login():
         
         conn = get_db_connection()
         user = conn.execute(
-            'SELECT id, username, password, name, email, is_admin FROM users WHERE username = ?',
+            'SELECT id, username, password, name, email, joined_date, is_admin FROM users WHERE username = ?',
             (username,)
         ).fetchone()
         conn.close()
@@ -383,6 +390,7 @@ def api_login():
                     'username': user['username'],
                     'name': user['name'],
                     'email': user['email'],
+                    'joinedDate': user['joined_date'],
                     'is_admin': user['is_admin']
                 }
             })
@@ -549,6 +557,13 @@ def api_predict():
         carbon_footprint = prediction * 0.5
         
         # Calculate savings potential
+        device_power = 0
+        for device_name in devices:
+            for name, power in DEVICES:
+                if device_name.lower() in name.lower():
+                    device_power += power
+                    break
+        
         if device_power:
             savings_potential = min(30, (device_power / 5000) * 30)
         else:
@@ -938,6 +953,25 @@ def submit_query_api():
         print(f"Error submitting query: {e}")
         return jsonify({'success': False, 'error': str(e)}), 400
 
+@app.route('/api/chatbot', methods=['POST'])
+def chatbot_api():
+    """Chatbot endpoint - no login required"""
+    try:
+        data = request.json
+        user_message = data.get('message', '').lower().strip()
+        
+        response = generate_ai_response(user_message)
+        
+        return jsonify({
+            'success': True,
+            'response': response,
+            'timestamp': datetime.now().strftime("%H:%M:%S")
+        })
+        
+    except Exception as e:
+        print(f"Chatbot error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 400
+
 def generate_ai_response(query):
     """Generate AI response for user queries"""
     query_lower = query.lower()
@@ -1210,10 +1244,8 @@ def get_dashboard_stats():
         total_carbon = sum(p['carbon'] for p in predictions)
         
         # Get weekly trend
-        week_ago = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-        # Subtract 7 days
         from datetime import timedelta
-        week_ago = week_ago - timedelta(days=7)
+        week_ago = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=7)
         
         weekly_predictions = [p for p in predictions if p['timestamp'] and datetime.fromisoformat(p['timestamp']) > week_ago]
         
@@ -1245,27 +1277,6 @@ def get_dashboard_stats():
     except Exception as e:
         print(f"Error getting dashboard stats: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
-
-# ===================== CHATBOT ROUTE =====================
-
-@app.route('/api/chatbot', methods=['POST'])
-def chatbot_api():
-    """Chatbot endpoint"""
-    try:
-        data = request.json
-        user_message = data.get('message', '').lower().strip()
-        
-        response = generate_ai_response(user_message)
-        
-        return jsonify({
-            'success': True,
-            'response': response,
-            'timestamp': datetime.now().strftime("%H:%M:%S")
-        })
-        
-    except Exception as e:
-        print(f"Chatbot error: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 400
 
 # ===================== HEALTH CHECK =====================
 
@@ -1449,4 +1460,6 @@ if __name__ == '__main__':
     
     print("="*60)
     
-    app.run(debug=True, port=5000, host='0.0.0.0')
+    # Get port from environment variable (for Render)
+    port = int(os.environ.get('PORT', 5000))
+    app.run(debug=False, host='0.0.0.0', port=port)
