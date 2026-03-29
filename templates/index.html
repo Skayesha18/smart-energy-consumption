@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SmartEnergy AI - Energy Consumption Prediction</title>
-    <!-- Add Bootstrap CSS -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚡</text></svg>">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
@@ -21,7 +20,6 @@
             min-height: 100vh;
         }
 
-        /* Contact Us Page Styles */
         .contact-container {
             max-width: 600px;
             margin: 0 auto;
@@ -132,7 +130,6 @@
             line-height: 1.6;
         }
 
-        /* Flash Messages Styles */
         .alert-message {
             padding: 15px;
             border-radius: 10px;
@@ -174,7 +171,6 @@
             margin-left: 15px;
         }
 
-        /* Login Page Styles */
         .login-container {
             display: flex;
             justify-content: center;
@@ -268,7 +264,6 @@
             font-weight: 500;
         }
 
-        /* Error Modal */
         .error-modal {
             display: none;
             position: fixed;
@@ -326,7 +321,6 @@
             font-weight: 500;
         }
 
-        /* File Error Modal */
         .file-error-modal {
             display: none;
             position: fixed;
@@ -396,7 +390,6 @@
             font-weight: 500;
         }
 
-        /* Main Website Styles */
         .navbar {
             display: flex;
             justify-content: space-between;
@@ -665,7 +658,6 @@
             line-height: 1.6;
         }
 
-        /* Guide Section Styles */
         .guide-section {
             max-width: 1200px;
             margin: 0 auto;
@@ -743,7 +735,6 @@
             color: #78e08f;
         }
 
-        /* File Upload Styles */
         .file-upload-section {
             padding: 30px;
             background: rgba(255, 255, 255, 0.1);
@@ -856,7 +847,6 @@
             display: block;
         }
 
-        /* Prediction Section */
         .prediction-section, .reviews-section {
             max-width: 900px;
             margin: 0 auto;
@@ -1002,7 +992,6 @@
             color: #78e08f;
         }
 
-        /* Dashboard Section */
         .dashboard-section {
             max-width: 1200px;
             margin: 0 auto;
@@ -1106,7 +1095,6 @@
             cursor: pointer;
         }
 
-        /* Chart tooltips */
         .chartjs-tooltip {
             background: rgba(0, 0, 0, 0.8) !important;
             border: 1px solid #78e08f !important;
@@ -1115,7 +1103,6 @@
             padding: 10px !important;
         }
 
-        /* AI Assistant Section */
         .ai-assistant-section {
             max-width: 900px;
             margin: 0 auto;
@@ -1322,7 +1309,6 @@
             transform: translateY(-2px);
         }
 
-        /* Success Modal */
         .modal {
             display: none;
             position: fixed;
@@ -1379,7 +1365,6 @@
             font-weight: 500;
         }
 
-        /* Prediction Details Modal */
         .prediction-details-modal {
             max-width: 600px;
         }
@@ -1389,7 +1374,6 @@
             overflow-y: auto;
         }
 
-        /* Report Download Section */
         .report-section {
             margin-top: 30px;
             padding: 25px;
@@ -2413,6 +2397,25 @@
             }
         ];
 
+        // ===================== AUTHENTICATION TOKEN HELPER =====================
+        function getAuthHeaders() {
+            if (!currentUser) {
+                return {};
+            }
+            return {
+                'X-User-Id': currentUser.id.toString(),
+                'X-Username': currentUser.username
+            };
+        }
+
+        function isAuthenticated() {
+            if (!currentUser) {
+                showModal("Please login first to make predictions.", "error");
+                return false;
+            }
+            return true;
+        }
+
         // ===================== REPORT DOWNLOAD FUNCTIONS =====================
         function downloadReport(type) {
             if (!document.getElementById('predictionResult').classList.contains('active')) {
@@ -2639,7 +2642,6 @@
         }
 
         function generateDetailedReport(currentDate, date, time, temperature, occupancy, area, devices, prediction, cost, carbon, savings, peakHours, recommendation) {
-            // Calculate additional metrics
             const hourlyConsumption = (parseFloat(prediction.replace(' kWh', '')) / 24).toFixed(2);
             const monthlyEstimate = (parseFloat(prediction.replace(' kWh', '')) * 30).toFixed(1);
             const yearlyEstimate = (parseFloat(prediction.replace(' kWh', '')) * 365).toFixed(0);
@@ -2981,7 +2983,6 @@
         }
 
         function generateExcelReport(predictions) {
-            // For simplicity, we'll create a CSV that Excel can open
             return generateDashboardCSVReport(predictions);
         }
 
@@ -2998,24 +2999,18 @@
         }
 
         function downloadAsPDF(htmlContent, filename) {
-            // For a real implementation, you would use a library like jsPDF or html2pdf
-            // This is a simplified version that creates an HTML file
             const blob = new Blob([htmlContent], { type: 'text/html' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = filename.replace('.pdf', '.html'); // Change to .html for now
+            a.download = filename.replace('.pdf', '.html');
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
-            
-            // In a real app, you would use:
-            // html2pdf().from(htmlContent).save(filename);
         }
 
         function downloadExcelFile(content, filename) {
-            // For simplicity, we'll create a CSV that Excel can open
             downloadFile(content, filename, 'text/csv');
         }
 
@@ -3036,13 +3031,11 @@
             }
             
             try {
-                // Show loading state
                 const submitBtn = document.querySelector('.contact-btn');
                 const originalText = submitBtn.innerHTML;
                 submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
                 submitBtn.disabled = true;
                 
-                // Send data to Flask backend - UPDATED to use relative path
                 const response = await fetch('/api/contact', {
                     method: 'POST',
                     headers: {
@@ -3057,7 +3050,6 @@
                 
                 const result = await response.json();
                 
-                // Reset button
                 submitBtn.innerHTML = originalText;
                 submitBtn.disabled = false;
                 
@@ -3068,7 +3060,6 @@
                     showAlert(result.error || "Failed to send message. Please try again.", "error");
                 }
                 
-                // Auto-hide alert after 5 seconds
                 setTimeout(() => {
                     closeAlert();
                 }, 5000);
@@ -3077,7 +3068,6 @@
                 console.error('Contact form error:', error);
                 showAlert("Network error. Please check if the backend server is running.", "error");
                 
-                // Reset button
                 const submitBtn = document.querySelector('.contact-btn');
                 submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Send Message';
                 submitBtn.disabled = false;
@@ -3091,7 +3081,6 @@
             alertDiv.className = `alert-message show alert-${type}`;
             alertText.textContent = message;
             
-            // Scroll to alert
             alertDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
 
@@ -3555,7 +3544,6 @@
                 return;
             }
             
-            // Get users from localStorage
             const users = JSON.parse(localStorage.getItem('smartEnergyUsers')) || [];
             const user = users.find(u => u.username === username && u.password === password);
             
@@ -3607,22 +3595,18 @@
                 return;
             }
             
-            // Get existing users
             const users = JSON.parse(localStorage.getItem('smartEnergyUsers')) || [];
             
-            // Check if username already exists
             if (users.some(u => u.username === username)) {
                 alert("Username already exists. Please choose a different username.");
                 return;
             }
             
-            // Check if email already exists
             if (users.some(u => u.email === email)) {
                 alert("Email already registered. Please use a different email.");
                 return;
             }
             
-            // Create new user
             const newUser = {
                 id: Date.now(),
                 name: name,
@@ -3685,12 +3669,9 @@
                 day: 'numeric'
             });
             
-            // FIXED: Get ONLY user-specific predictions
             const userPredictions = JSON.parse(localStorage.getItem(`userPredictions_${currentUser.id}`)) || [];
             
-            // Clear any old/default predictions that might have been added incorrectly
             if (userPredictions.length > 0) {
-                // Filter out any predictions that don't have proper data
                 const validPredictions = userPredictions.filter(pred => 
                     pred && pred.prediction && pred.timestamp
                 );
@@ -3759,20 +3740,16 @@
             const file = event.target.files[0];
             if (!file) return;
             
-            // Reset UI states
             document.getElementById('fileProcessing').classList.remove('active');
             document.getElementById('autoFillSuccess').classList.remove('active');
             document.getElementById('uploadedFileInfo').classList.remove('active');
             document.getElementById('predictionResult').classList.remove('active');
             
-            // First, validate the file
             if (!validateFile(file)) {
-                // Show invalid file modal
                 showFileErrorModal();
                 return;
             }
             
-            // File is valid, show processing
             document.getElementById('fileProcessing').classList.add('active');
             
             const fileInfo = document.getElementById('uploadedFileInfo');
@@ -3795,23 +3772,19 @@
                     
                     const extractedData = processFileContent(content, fileType);
                     
-                    // Check if relevant energy data was extracted
                     if (!extractedData || Object.keys(extractedData).length === 0) {
                         throw new Error("No relevant energy data found");
                     }
                     
-                    // Check if data contains at least some energy-related information
                     if (!isValidEnergyData(extractedData)) {
                         throw new Error("File does not contain relevant energy consumption data");
                     }
                     
-                    // Data is valid, proceed with auto-fill
                     autoFillForm(extractedData);
                     
                     fileStatus.textContent = 'File processed successfully!';
                     fileStatus.style.color = '#78e08f';
                     
-                    // Make prediction from file data
                     setTimeout(() => {
                         makePredictionFromFile(extractedData);
                     }, 500);
@@ -3821,7 +3794,6 @@
                     fileStatus.textContent = 'Error: ' + error.message;
                     fileStatus.style.color = '#ff6b6b';
                     
-                    // Show error modal for invalid content
                     showErrorModal(error.message || "Invalid energy data format");
                 } finally {
                     document.getElementById('fileProcessing').classList.remove('active');
@@ -3847,12 +3819,10 @@
             const fileType = file.name.split('.').pop().toLowerCase();
             const maxSize = 5 * 1024 * 1024;
             
-            // Check file type
             if (!validTypes.includes(fileType)) {
                 return false;
             }
             
-            // Check file size
             if (file.size > maxSize) {
                 showErrorModal("File size too large! Maximum size is 5MB.");
                 return false;
@@ -3895,7 +3865,6 @@
                         throw new Error("Unsupported file type");
                 }
                 
-                // Additional validation to ensure it's actually energy data
                 if (!isRelevantEnergyFile(extractedData, content)) {
                     throw new Error("File does not contain relevant energy consumption data");
                 }
@@ -3908,7 +3877,6 @@
         }
 
         function isRelevantEnergyFile(data, content) {
-            // Check if we have at least some energy-related data
             const hasBasicData = (
                 data.temperature !== undefined ||
                 data.occupancy !== undefined ||
@@ -3916,7 +3884,6 @@
                 (data.devices !== undefined && data.devices.length > 0)
             );
             
-            // Check for energy-related keywords in the content
             const contentLower = content.toLowerCase();
             const hasEnergyKeywords = contentLower.includes('energy') ||
                                      contentLower.includes('power') ||
@@ -4038,7 +4005,6 @@
                     devices: ['1', '2', '3', '8']
                 };
                 
-                // Check if it's a relevant file by checking file name or simulated data
                 if (!isValidEnergyData(simulatedData)) {
                     showErrorModal("Excel file does not contain relevant energy data");
                     document.getElementById('fileProcessing').classList.remove('active');
@@ -4098,7 +4064,6 @@
         }
 
         function isValidEnergyData(data) {
-            // Check for basic energy-related data
             const hasBasicData = (
                 data.temperature !== undefined ||
                 data.occupancy !== undefined ||
@@ -4148,13 +4113,11 @@
         }
 
         function makePredictionFromFile(data) {
-            // First check if we have valid data to make a prediction
             if (!data || Object.keys(data).length === 0) {
                 showErrorModal("Cannot make prediction: No valid energy data found in file");
                 return;
             }
             
-            // Check if we have minimum required data
             const hasRequiredData = data.temperature !== undefined || 
                                   data.occupancy !== undefined || 
                                   data.area !== undefined || 
@@ -4231,7 +4194,6 @@
                     initVoiceRecognition();
                 }
             } else if (sectionId === 'contact') {
-                // Clear any existing alerts when visiting contact page
                 closeAlert();
             } else {
                 if (isListening) {
@@ -4269,15 +4231,19 @@
             }
         }
 
-        // ===================== PREDICTION FUNCTIONS =====================
+        // ===================== PREDICTION FUNCTIONS (FIXED) =====================
         async function makePrediction() {
+            // FIXED: Check authentication first
+            if (!isAuthenticated()) {
+                return;
+            }
+            
             const date = document.getElementById('date').value;
             const time = document.getElementById('time').value;
             const occupancy = parseInt(document.getElementById('occupancy').value) || 1;
             const temp = parseFloat(document.getElementById('temperature').value) || 25;
             const area = parseInt(document.getElementById('area').value) || 1000;
             
-            // Get selected devices with their power values
             let selectedDevices = [];
             let totalDevicePower = 0;
             
@@ -4291,14 +4257,16 @@
                 totalDevicePower += devicePower;
             });
             
-            // Get just the device names for the API
             const deviceNames = selectedDevices.map(device => device.name);
             
             try {
+                // FIXED: Send authentication headers with the request
                 const response = await fetch('/api/predict', {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'X-User-Id': currentUser.id.toString(),
+                        'X-Username': currentUser.username
                     },
                     body: JSON.stringify({
                         date: date,
@@ -4307,7 +4275,7 @@
                         temperature: temp,
                         area: area,
                         devices: deviceNames,
-                        humidity: 50 // Add default humidity
+                        humidity: 50
                     })
                 });
                 
@@ -4343,13 +4311,13 @@
                 }
             } catch (error) {
                 console.error('Prediction API error:', error);
-                // Fallback to local calculation if API fails
+                showModal("Prediction failed: Unable to connect to server. Please make sure the backend is running.", "error");
+                // Fallback to local calculation
                 calculatePredictionLocally(date, time, occupancy, temp, area, selectedDevices, totalDevicePower);
             }
         }
 
         function calculatePredictionLocally(date, time, occupancy, temp, area, selectedDevices, totalDevicePower) {
-            // Local calculation logic
             const hour = parseInt(time.split(':')[0]);
             
             let baseConsumption = (area / 100) * 0.5;
@@ -4371,7 +4339,7 @@
             let prediction = (baseConsumption + occupancyFactor + tempFactor + deviceFactor) * timeFactor;
             prediction = Math.max(0.5, prediction).toFixed(2);
             
-            const costPerKWh = 0.15 * 83; // USD to INR conversion
+            const costPerKWh = 0.15 * USD_TO_INR;
             const estimatedCost = (prediction * costPerKWh).toFixed(2);
             const carbonFootprint = (prediction * 0.5).toFixed(1);
             const savingsPotential = Math.min(30, Math.round((totalDevicePower / 5000) * 30));
@@ -4446,7 +4414,6 @@
             const resultDiv = document.getElementById('predictionResult');
             resultDiv.classList.add('active');
             
-            // Scroll to result
             setTimeout(() => {
                 resultDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }, 300);
@@ -4457,7 +4424,6 @@
             
             const history = JSON.parse(localStorage.getItem(`userPredictions_${currentUser.id}`)) || [];
             
-            // FIXED: Ensure we don't add duplicate or default predictions
             const isDuplicate = history.some(pred => 
                 pred.timestamp === predictionData.timestamp || 
                 (pred.date === predictionData.date && pred.time === predictionData.time)
@@ -4480,7 +4446,6 @@
         function loadPredictionHistory() {
             if (!currentUser) return;
             
-            // FIXED: Only load user-specific predictions
             predictionHistory = JSON.parse(localStorage.getItem(`userPredictions_${currentUser.id}`)) || [];
             updatePredictionHistoryTable();
         }
@@ -4492,7 +4457,6 @@
                 return;
             }
             
-            // FIXED: Only load user-specific predictions
             const predictions = JSON.parse(localStorage.getItem(`userPredictions_${currentUser.id}`)) || [];
             
             if (predictions.length === 0) {
@@ -4533,7 +4497,6 @@
         }
 
         function createEmptyDashboard() {
-            // Create empty arrays with zeros
             const labels = ['No Data', 'No Data', 'No Data', 'No Data', 'No Data', 'No Data', 'No Data'];
             const zeroData = [0, 0, 0, 0, 0, 0, 0];
             
@@ -4543,17 +4506,14 @@
             const avgEnergy = 0;
             const avgCost = 0;
             
-            // Update dashboard summary with zeros
             updateDashboardSummary(totalEnergy, totalCost, totalCarbon, avgEnergy, avgCost);
             
-            // Create empty charts
             createEmptyEnergyTrendChart(labels, zeroData);
             createEmptyCostChart(labels, zeroData);
             createEmptyCarbonChart();
             createEmptyDeviceChart();
             createEmptyPredictionHistoryChart();
             
-            // Update history table with empty state
             const historyTable = document.querySelector('#predictionHistoryTable tbody');
             if (historyTable) {
                 historyTable.innerHTML = `
@@ -4679,7 +4639,6 @@
                 }
             });
             
-            // Add a message overlay
             const chartContainer = ctx.parentElement;
             const overlay = document.createElement('div');
             overlay.style.position = 'absolute';
@@ -4795,7 +4754,6 @@
                 }
             });
             
-            // Add a message overlay
             const chartContainer = ctx.parentElement;
             const overlay = document.createElement('div');
             overlay.style.position = 'absolute';
@@ -4852,7 +4810,6 @@
                 }
             });
             
-            // Add a message overlay
             const chartContainer = ctx.parentElement;
             const overlay = document.createElement('div');
             overlay.style.position = 'absolute';
@@ -4918,7 +4875,6 @@
                 }
             });
             
-            // Add a message overlay
             const chartContainer = ctx.parentElement;
             const overlay = document.createElement('div');
             overlay.style.position = 'absolute';
@@ -4943,7 +4899,6 @@
                 charts.historyChart.destroy();
             }
             
-            // Replace chart with empty state message
             ctx.parentElement.innerHTML = `
                 <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%;">
                     <i class="fas fa-chart-line" style="font-size: 50px; color: #78e08f; margin-bottom: 20px;"></i>
@@ -5828,7 +5783,6 @@
             } else if (chatState.mode === 'collecting_data') {
                 handlePredictionInput(message);
             } else {
-                // Try to get response from backend chatbot API
                 try {
                     const response = await fetch('/api/chatbot', {
                         method: 'POST',
@@ -6018,7 +5972,9 @@
                     const response = await fetch('/api/predict', {
                         method: 'POST',
                         headers: {
-                            'Content-Type': 'application/json'
+                            'Content-Type': 'application/json',
+                            'X-User-Id': currentUser ? currentUser.id.toString() : '',
+                            'X-Username': currentUser ? currentUser.username : ''
                         },
                         body: JSON.stringify({
                             date: chatState.predictionData.date || new Date().toISOString().split('T')[0],
@@ -6355,12 +6311,10 @@
                 updateProfile();
             }
             
-            // Initialize star rating for reviews section
             setTimeout(() => {
                 initializeStarRating();
             }, 100);
             
-            // Check if contact form exists and clear it
             const contactForm = document.getElementById('contactForm');
             if (contactForm) {
                 contactForm.reset();
@@ -6389,10 +6343,8 @@
         document.addEventListener('DOMContentLoaded', function() {
             checkLoginStatus();
             
-            // Initialize voice recognition
             initVoiceRecognition();
             
-            // Initialize contact form
             const contactForm = document.getElementById('contactForm');
             if (contactForm) {
                 contactForm.addEventListener('submit', function(e) {
@@ -6401,7 +6353,6 @@
                 });
             }
             
-            // Close modals when clicking outside
             document.addEventListener('click', function(event) {
                 const modals = ['successModal', 'errorModal', 'fileErrorModal'];
                 modals.forEach(modalId => {
@@ -6419,7 +6370,6 @@
                 });
             });
             
-            // Close modals with Escape key
             document.addEventListener('keydown', function(event) {
                 if (event.key === 'Escape') {
                     closeModal();
@@ -6429,11 +6379,9 @@
             });
         });
 
-        // ===================== HELPER FUNCTIONS =====================
         window.onload = function() {
             checkLoginStatus();
             
-            // Initialize file upload area
             const fileInput = document.getElementById('fileInput');
             if (fileInput) {
                 const uploadArea = document.querySelector('.file-upload-area');
@@ -6444,7 +6392,6 @@
                 }
             }
             
-            // Initialize charts on dashboard load
             if (document.getElementById('dashboard').classList.contains('active')) {
                 initializeDashboardCharts();
             }
