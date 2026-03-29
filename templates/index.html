@@ -3042,8 +3042,8 @@
                 submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
                 submitBtn.disabled = true;
                 
-                // Send data to Flask backend
-                const response = await fetch('http://localhost:5000/api/contact', {
+                // Send data to Flask backend - UPDATED to use relative path
+                const response = await fetch('/api/contact', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -3075,7 +3075,7 @@
                 
             } catch (error) {
                 console.error('Contact form error:', error);
-                showAlert("Network error. Please check if the backend server is running at http://localhost:5000", "error");
+                showAlert("Network error. Please check if the backend server is running.", "error");
                 
                 // Reset button
                 const submitBtn = document.querySelector('.contact-btn');
@@ -3546,17 +3546,7 @@
         }
 
         // ===================== AUTHENTICATION =====================
-        function showLogin() {
-            document.getElementById('registerPage').style.display = 'none';
-            document.getElementById('loginPage').style.display = 'flex';
-        }
-
-        function showRegister() {
-            document.getElementById('loginPage').style.display = 'none';
-            document.getElementById('registerPage').style.display = 'flex';
-        }
-
-        function login() {
+        async function login() {
             const username = document.getElementById('loginUsername').value.trim();
             const password = document.getElementById('loginPassword').value.trim();
             
@@ -3565,25 +3555,37 @@
                 return;
             }
             
-            const users = JSON.parse(localStorage.getItem('smartEnergyUsers')) || [];
-            const user = users.find(u => u.username === username && u.password === password);
-            
-            if (user) {
-                currentUser = user;
-                localStorage.setItem('smartEnergyCurrentUser', JSON.stringify(user));
-                document.getElementById('loginPage').style.display = 'none';
-                document.getElementById('mainWebsite').style.display = 'block';
-                document.querySelector('.navbar').style.display = 'flex';
-                showSection('home');
-                initializeApp();
-                updateProfile();
-                loadPredictionHistory();
-            } else {
-                alert("Invalid username or password");
+            try {
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ username, password })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    currentUser = result.user;
+                    localStorage.setItem('smartEnergyCurrentUser', JSON.stringify(currentUser));
+                    document.getElementById('loginPage').style.display = 'none';
+                    document.getElementById('mainWebsite').style.display = 'block';
+                    document.querySelector('.navbar').style.display = 'flex';
+                    showSection('home');
+                    initializeApp();
+                    updateProfile();
+                    loadPredictionHistory();
+                } else {
+                    alert(result.error || "Invalid username or password");
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                alert("Network error. Please check if the backend server is running.");
             }
         }
 
-        function register() {
+        async function register() {
             const name = document.getElementById('registerName').value.trim();
             const email = document.getElementById('registerEmail').value.trim();
             const username = document.getElementById('registerUsername').value.trim();
@@ -3610,39 +3612,28 @@
                 return;
             }
             
-            const users = JSON.parse(localStorage.getItem('smartEnergyUsers')) || [];
-            if (users.find(u => u.username === username)) {
-                alert("Username already exists. Please choose another.");
-                return;
+            try {
+                const response = await fetch('/api/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ name, email, username, password })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert(result.message);
+                    showLogin();
+                    document.getElementById('registerForm').reset();
+                } else {
+                    alert(result.error || "Registration failed");
+                }
+            } catch (error) {
+                console.error('Registration error:', error);
+                alert("Network error. Please try again.");
             }
-            
-            const newUser = {
-                id: Date.now(),
-                name: name,
-                email: email,
-                username: username,
-                password: password,
-                joinedDate: new Date().toISOString(),
-                predictions: 0,
-                totalEnergySaved: 0,
-                totalMoneySaved: 0,
-                avgPrediction: 0,
-                isAdmin: users.length === 0
-            };
-            
-            users.push(newUser);
-            localStorage.setItem('smartEnergyUsers', JSON.stringify(users));
-            
-            currentUser = newUser;
-            localStorage.setItem('smartEnergyCurrentUser', JSON.stringify(newUser));
-            document.getElementById('registerPage').style.display = 'none';
-            document.getElementById('mainWebsite').style.display = 'block';
-            document.querySelector('.navbar').style.display = 'flex';
-            showSection('home');
-            initializeApp();
-            updateProfile();
-            
-            document.getElementById('registerForm').reset();
         }
 
         function logout() {
@@ -4290,7 +4281,7 @@
             const deviceNames = selectedDevices.map(device => device.name);
             
             try {
-                const response = await fetch('http://localhost:5000/api/predict', {
+                const response = await fetch('/api/predict', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -5778,7 +5769,7 @@
             chatContainer.scrollTop = chatContainer.scrollHeight;
         }
 
-        function processUserMessage(message) {
+        async function processUserMessage(message) {
             const lowerMessage = message.toLowerCase();
             
             if (chatState.predictionCompleted) {
@@ -5823,7 +5814,27 @@
             } else if (chatState.mode === 'collecting_data') {
                 handlePredictionInput(message);
             } else {
-                generateGeneralResponse(message);
+                // Try to get response from backend chatbot API
+                try {
+                    const response = await fetch('/api/chatbot', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ message: message })
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        addMessage(result.response, 'ai');
+                    } else {
+                        generateGeneralResponse(message);
+                    }
+                } catch (error) {
+                    console.error('Chatbot API error:', error);
+                    generateGeneralResponse(message);
+                }
             }
         }
 
@@ -5848,9 +5859,10 @@
                 `6. **Reporting** - Download detailed reports for analysis and sharing\n\n` +
                 `**Technology Stack:**\n` +
                 `• Frontend: HTML5, CSS3, JavaScript\n` +
+                `• Backend: Flask (Python)\n` +
+                `• Database: SQLite\n` +
                 `• Charts: Chart.js for data visualization\n` +
                 `• Voice Recognition: Web Speech API\n` +
-                `• Data Storage: LocalStorage for user data\n` +
                 `• AI: Machine learning algorithms for predictions\n` +
                 `• Reporting: PDF and CSV export capabilities\n\n` +
                 `**Benefits:**\n` +
@@ -5989,7 +6001,7 @@
             
             setTimeout(async () => {
                 try {
-                    const response = await fetch('http://localhost:5000/api/predict', {
+                    const response = await fetch('/api/predict', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json'
