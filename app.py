@@ -16,19 +16,32 @@ from functools import wraps
 app = Flask(__name__, static_folder='static', template_folder='templates')
 app.secret_key = 'smart-energy-ai-secret-key-2024'
 
-# Updated CORS to allow your Render URL
-CORS(app, origins=[
-    'http://localhost:5000', 
-    'http://127.0.0.1:5000', 
-    'http://localhost:3000',
-    'https://smart-energy-consumption-2.onrender.com'  # Your Render URL
-], supports_credentials=True)
+# ============= SESSION CONFIGURATION FOR CROSS-ORIGIN =============
+app.config['SESSION_COOKIE_SAMESITE'] = 'None'
+app.config['SESSION_COOKIE_SECURE'] = False  # Set to True in production with HTTPS
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['PERMANENT_SESSION_LIFETIME'] = 86400  # 24 hours
+app.config['SESSION_TYPE'] = 'filesystem'
+
+# ============= CORS CONFIGURATION =============
+CORS(app, 
+     origins=[
+         'http://localhost:5000', 
+         'http://127.0.0.1:5000', 
+         'http://localhost:3000',
+         'http://localhost:5500',
+         'https://smart-energy-consumption-2.onrender.com'
+     ],
+     supports_credentials=True,  # CRITICAL for session cookies
+     allow_headers=['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+     methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+     expose_headers=['Content-Type', 'Set-Cookie'])
 
 # =============================================
-# EMAIL CONFIGURATION - UPDATE THESE!
+# EMAIL CONFIGURATION
 # =============================================
-SENDER_EMAIL = "teamsmartenergy12@gmail.com"  # Your email
-SENDER_PASSWORD = "yzut aang kjfm sxud"      # Your Gmail app password
+SENDER_EMAIL = "teamsmartenergy12@gmail.com"
+SENDER_PASSWORD = "yzut aang kjfm sxud"
 # =============================================
 
 # Load model (if exists)
@@ -43,7 +56,7 @@ try:
 except Exception as e:
     print(f"❌ Error loading model: {e}")
 
-# Database setup
+# ============= DATABASE SETUP =============
 def init_db():
     """Initialize SQLite database"""
     conn = sqlite3.connect('smart_energy.db')
@@ -136,7 +149,7 @@ def init_db():
 # Initialize database
 init_db()
 
-# Feature names for the model
+# ============= FEATURE NAMES & DEVICES =============
 FEATURE_NAMES = [
     'Temperature', 'Humidity', 'Occupancy', 'HVACUsage', 
     'LightingUsage', 'RenewableEnergy', 'DayOfWeek', 'Holiday',
@@ -144,7 +157,6 @@ FEATURE_NAMES = [
     'Rolling_Mean_3', 'Rolling_Mean_24'
 ]
 
-# Device list for power calculation
 DEVICES = [
     ("Air Conditioner", 1500),
     ("Refrigerator", 150),
@@ -163,7 +175,7 @@ DEVICES = [
     ("Gaming Console", 150)
 ]
 
-# Helper functions
+# ============= HELPER FUNCTIONS =============
 def get_db_connection():
     """Get database connection"""
     conn = sqlite3.connect('smart_energy.db')
@@ -175,7 +187,9 @@ def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'user_id' not in session:
+            print(f"⚠️ Login required - Session: {dict(session)}")
             return jsonify({'success': False, 'error': 'Please login first'}), 401
+        print(f"✅ User authenticated: {session.get('username')}")
         return f(*args, **kwargs)
     return decorated_function
 
@@ -260,7 +274,6 @@ def send_email(to_email, subject, body):
             return False, "Email password not set"
         
         print(f"📧 Attempting to send email to: {to_email}")
-        print(f"   From: {SENDER_EMAIL}")
         
         msg = MIMEMultipart()
         msg['From'] = SENDER_EMAIL
@@ -298,9 +311,12 @@ def send_email(to_email, subject, body):
 
 # ===================== AUTHENTICATION ROUTES =====================
 
-@app.route('/api/register', methods=['POST'])
+@app.route('/api/register', methods=['POST', 'OPTIONS'])
 def api_register():
     """Register a new user"""
+    if request.method == 'OPTIONS':
+        return '', 200
+    
     try:
         data = request.json
         username = data.get('username', '').strip()
@@ -358,9 +374,12 @@ def api_register():
         print(f"Registration error: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
-@app.route('/api/login', methods=['POST'])
+@app.route('/api/login', methods=['POST', 'OPTIONS'])
 def api_login():
-    """Login user"""
+    """Login user - Creates server session"""
+    if request.method == 'OPTIONS':
+        return '', 200
+    
     try:
         data = request.json
         username = data.get('username', '').strip()
@@ -377,11 +396,17 @@ def api_login():
         conn.close()
         
         if user and check_password_hash(user['password'], password):
+            # Clear any existing session
+            session.clear()
+            # Set session variables
             session['user_id'] = user['id']
             session['username'] = user['username']
             session['name'] = user['name']
             session['email'] = user['email']
             session['is_admin'] = user['is_admin']
+            session.permanent = True
+            
+            print(f"✅ Login successful - User: {username}, Session ID: {session.get('user_id')}")
             
             return jsonify({
                 'success': True,
@@ -401,9 +426,12 @@ def api_login():
         print(f"Login error: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
-@app.route('/api/logout', methods=['POST'])
+@app.route('/api/logout', methods=['POST', 'OPTIONS'])
 def api_logout():
     """Logout user"""
+    if request.method == 'OPTIONS':
+        return '', 200
+    
     session.clear()
     return jsonify({'success': True, 'message': 'Logged out successfully'})
 
@@ -425,9 +453,12 @@ def check_auth():
 
 # ===================== CONTACT ROUTES =====================
 
-@app.route('/api/contact', methods=['POST'])
+@app.route('/api/contact', methods=['POST', 'OPTIONS'])
 def api_contact():
     """API endpoint for contact form"""
+    if request.method == 'OPTIONS':
+        return '', 200
+    
     try:
         data = request.json
         name = data.get('name', '').strip()
@@ -501,10 +532,13 @@ Email: {SENDER_EMAIL}
 
 # ===================== PREDICTION ROUTES =====================
 
-@app.route('/api/predict', methods=['POST'])
-@login_required  # <-- THIS FIXES THE LOGIN ERROR
+@app.route('/api/predict', methods=['POST', 'OPTIONS'])
+@login_required
 def api_predict():
     """API endpoint for energy prediction - REQUIRES LOGIN"""
+    if request.method == 'OPTIONS':
+        return '', 200
+    
     try:
         data = request.json
         
@@ -538,7 +572,7 @@ def api_predict():
             }
             feature_array = engineer_features(features)
             if feature_array is not None:
-                prediction = model.predict(feature_array)[0]
+                prediction = float(model.predict(feature_array)[0])
             else:
                 prediction, _ = calculate_prediction(features)
         else:
@@ -592,8 +626,7 @@ def api_predict():
         conn.commit()
         conn.close()
         
-        # Update user statistics
-        update_user_stats(session['user_id'])
+        print(f"✅ Prediction saved - User: {session.get('username')}, Prediction: {prediction:.2f} kWh")
         
         return jsonify({
             'success': True,
@@ -808,8 +841,6 @@ def get_gamification():
 
 def get_current_challenge(user_id):
     """Get current challenge for user"""
-    # For now, return a default challenge
-    # In production, this would be stored in the database
     return {
         'type': 'peak_hour_reduction',
         'name': 'Reduce Peak Hour Usage',
@@ -851,10 +882,13 @@ def update_gamification_score():
 
 # ===================== REVIEW ROUTES =====================
 
-@app.route('/api/review', methods=['POST'])
+@app.route('/api/review', methods=['POST', 'OPTIONS'])
 @login_required
 def submit_review_api():
     """Submit a review"""
+    if request.method == 'OPTIONS':
+        return '', 200
+    
     try:
         data = request.json
         rating = int(data.get('rating', 5))
@@ -1029,13 +1063,7 @@ Potential savings: 15-30% on energy bills!"""
 • Each 1°C adjustment saves 3-5% on HVAC energy
 • Use ceiling fans to feel 4°C cooler
 • Close blinds during hottest part of day
-• Use zone heating/cooling if available
-• Install ceiling fans for better air circulation
-
-**Seasonal Tips:**
-• Spring/Fall: Use natural ventilation
-• Winter: Open curtains during sunny days
-• Summer: Use window reflectors"""
+• Use zone heating/cooling if available"""
     
     # Peak hours
     elif any(word in query_lower for word in ['peak', 'hour', 'time']):
@@ -1044,109 +1072,59 @@ Potential savings: 15-30% on energy bills!"""
 **Peak Hours:** 6 PM - 9 PM
 • Electricity rates are 30-50% higher
 • Grid demand is at maximum
-• Environmental impact is greater
 
 **Off-Peak Hours:** 10 PM - 6 AM
 • Lower electricity rates
 • Reduced grid stress
-• Better for the environment
 
 **Smart Strategies:**
 ✅ Run appliances during off-peak hours
 ✅ Pre-cool your home before peak hours
-✅ Use delay start features
-✅ Consider battery storage for peak shaving
-✅ Charge EVs overnight
-
-**Potential Savings:** 15-30% by shifting usage!"""
+✅ Use delay start features"""
     
     # Devices
     elif any(word in query_lower for word in ['device', 'appliance', 'equipment']):
         return """**Device Energy Usage Guide:** 📱
 
-**High-Power Devices (Use wisely):**
+**High-Power Devices:**
 • Air Conditioner: 1500-2000W
 • Water Heater: 3000W
 • Electric Oven: 2000W
-• Washing Machine: 500W
-• Dishwasher: 1200W
 
 **Medium-Power Devices:**
 • Refrigerator: 150W
 • Microwave: 1000W
-• Desktop PC: 200W
-• TV: 100W
+• Washing Machine: 500W
 
 **Low-Power Devices:**
 • LED Lighting: 10-20W
 • Laptop: 50W
 • Chargers: 5-25W
-• Ceiling Fan: 75W
 
 **Tips:**
 • Unplug devices when not in use
 • Use power strips for electronics
-• Replace old appliances with Energy Star models
-• Consider smart plugs for monitoring"""
-    
-    # Carbon footprint
-    elif any(word in query_lower for word in ['carbon', 'footprint', 'co2', 'environment']):
-        return """**Reducing Your Carbon Footprint:** 🌍
-
-**Current Impact:**
-• 1 kWh = 0.5 kg CO₂
-• Average home: 900 kg CO₂/month
-• Equivalent to 45 trees needed
-
-**Ways to Reduce:**
-1. **Energy Efficiency**
-   • LED lighting (75% less energy)
-   • Energy Star appliances
-   • Proper insulation
-
-2. **Renewable Energy**
-   • Solar panels
-   • Green power programs
-   • Community solar
-
-3. **Behavior Changes**
-   • Reduce peak hour usage
-   • Unplug devices
-   • Air dry clothes
-   • Lower water heater temperature
-
-**Impact of 20% Reduction:**
-• 180 kg CO₂ saved monthly
-• Equivalent to planting 9 trees
-• Saves ₹300-500 monthly"""
+• Replace old appliances with Energy Star models"""
     
     # Project information
     elif any(word in query_lower for word in ['project', 'about', 'smartenergy']):
         return """**SmartEnergy AI - Project Overview** 🚀
 
 **What is SmartEnergy AI?**
-An advanced energy management platform using AI to predict, analyze, and optimize energy consumption for homes and businesses.
+An advanced energy management platform using AI to predict, analyze, and optimize energy consumption.
 
 **Key Features:**
-✅ **AI-Powered Predictions** - Accurate consumption forecasting
-✅ **Real-time Analytics** - Interactive dashboards with charts
-✅ **Cost Optimization** - Recommendations to reduce bills
-✅ **Carbon Tracking** - Monitor environmental impact
-✅ **Voice-enabled Assistant** - Hands-free interaction
-✅ **Gamification** - Earn points and badges for saving energy
-
-**Technology Stack:**
-• Frontend: HTML5, CSS3, JavaScript
-• Backend: Flask (Python)
-• Database: SQLite
-• Charts: Chart.js
-• AI: Machine Learning models
+✅ AI-Powered Predictions
+✅ Real-time Analytics Dashboard
+✅ Cost Optimization
+✅ Carbon Footprint Tracking
+✅ Voice-enabled Assistant
+✅ Gamification - Earn points and badges
 
 **Benefits:**
 💰 Save up to 30% on energy bills
 🌱 Reduce carbon footprint
 📊 Data-driven insights
-⏱️ Quick and accurate predictions
 
 **"Empowering a sustainable future through intelligent energy management."**"""
     
@@ -1160,7 +1138,7 @@ An advanced energy management platform using AI to predict, analyze, and optimiz
    • Click "Predict" in navigation
    • Enter your parameters
    • Click "Predict Energy Consumption"
-   • View results and recommendations
+   • View results
 
 2. **Track Progress:**
    • View Dashboard for analytics
@@ -1169,20 +1147,14 @@ An advanced energy management platform using AI to predict, analyze, and optimiz
 
 3. **Get AI Assistance:**
    • Ask me questions
-   • Use voice input (microphone button)
+   • Use voice input
    • Get step-by-step guidance
 
 4. **Earn Rewards:**
    • Complete challenges
    • Earn points and badges
-   • Track your energy-saving progress
 
-5. **Contact Support:**
-   • Use Contact Us form
-   • We'll respond within 24 hours
-   • Share feedback and suggestions
-
-**Need more help?** Just ask me anything about energy management!"""
+Need more help? Just ask me anything about energy management!"""
     
     # Default response
     else:
@@ -1197,7 +1169,6 @@ I can assist you with:
 💡 **Saving Tips**
 • "How to reduce energy bill?"
 • "Energy saving tips"
-• "Best temperature for AC"
 
 ⏰ **Peak Hours**
 • "What are peak hours?"
@@ -1205,19 +1176,14 @@ I can assist you with:
 
 📱 **Devices**
 • "Which devices use most power?"
-• "How to save with appliances"
 
 🌱 **Environment**
 • "How to reduce carbon footprint?"
-• "What is my environmental impact?"
 
 📊 **Project**
 • "Tell me about this project"
-• "How does this work?"
 
 Just type your question and I'll help you! 🎯"""
-    
-    return response
 
 # ===================== DASHBOARD ROUTES =====================
 
@@ -1314,7 +1280,7 @@ def test_email_api():
         success, msg = send_email(
             test_email,
             "Test Email - Smart Energy Platform",
-            "This is a test email from Smart Energy Prediction Platform. If you received this, email is working correctly!"
+            "This is a test email from Smart Energy Prediction Platform."
         )
         
         return jsonify({
@@ -1356,9 +1322,6 @@ def debug_page():
             h1 {{ color: #333; }}
             .info {{ background: #e8f5e9; padding: 15px; border-radius: 5px; margin: 10px 0; }}
             .warning {{ background: #fff3e0; padding: 15px; border-radius: 5px; margin: 10px 0; }}
-            .success {{ background: #e8f5e9; padding: 15px; border-radius: 5px; margin: 10px 0; }}
-            a {{ color: #4CAF50; text-decoration: none; }}
-            a:hover {{ text-decoration: underline; }}
         </style>
     </head>
     <body>
@@ -1374,26 +1337,18 @@ def debug_page():
             </div>
             
             <div class="info">
-                <h3>Email Configuration</h3>
-                <p><strong>Sender Email:</strong> {SENDER_EMAIL}</p>
-                <p><strong>Password Set:</strong> {'✅ Yes' if SENDER_PASSWORD and SENDER_PASSWORD != 'your_app_password_here' else '❌ No - Update in code!'}</p>
+                <h3>Session Status</h3>
+                <p><strong>Session ID:</strong> {session.get('user_id', 'Not logged in')}</p>
+                <p><strong>Username:</strong> {session.get('username', 'Not logged in')}</p>
             </div>
             
             <div class="info">
                 <h3>Service Status</h3>
                 <p><strong>Model Loaded:</strong> {'✅ Yes' if model else '⚠️ No (using simulation)'}</p>
                 <p><strong>Database:</strong> ✅ Connected</p>
-                <p><strong>Session:</strong> {'✅ Active' if 'user_id' in session else '⚠️ Not logged in'}</p>
             </div>
             
             <div class="warning">
-                <h3>Quick Actions</h3>
-                <p><a href="/">Main Website</a></p>
-                <p><a href="/api/health">Health Check</a></p>
-                <p><button onclick="testEmail()">Test Email Function</button></p>
-            </div>
-            
-            <div class="success">
                 <h3>API Endpoints</h3>
                 <ul>
                     <li><code>POST /api/register</code> - User registration</li>
@@ -1406,28 +1361,10 @@ def debug_page():
                     <li><code>POST /api/chatbot</code> - AI assistant</li>
                     <li><code>POST /api/review</code> - Submit review</li>
                     <li><code>GET /api/reviews</code> - Get reviews</li>
-                    <li><code>POST /api/query</code> - Submit query</li>
                     <li><code>GET /api/gamification</code> - Get gamification data</li>
                     <li><code>GET /api/dashboard/stats</code> - Dashboard statistics</li>
                 </ul>
             </div>
-            
-            <script>
-                function testEmail() {{
-                    const email = prompt("Enter email to test:");
-                    if (email) {{
-                        fetch('/api/test-email', {{
-                            method: 'POST',
-                            headers: {{'Content-Type': 'application/json'}},
-                            body: JSON.stringify({{email: email}})
-                        }})
-                        .then(response => response.json())
-                        .then(data => {{
-                            alert(data.success ? '✅ Test email sent!' : '❌ Failed: ' + data.message);
-                        }});
-                    }}
-                }}
-            </script>
         </div>
     </body>
     </html>
@@ -1451,15 +1388,8 @@ if __name__ == '__main__':
     print(f"📧 Email: {SENDER_EMAIL}")
     print(f"🔧 Debug: http://localhost:5000/debug")
     print(f"🏥 Health: http://localhost:5000/api/health")
-    
-    # Check email configuration
-    if SENDER_EMAIL == "your_email@gmail.com" or SENDER_PASSWORD == "your_app_password_here":
-        print("\n⚠️  WARNING: Email not configured!")
-        print("   Update SENDER_EMAIL and SENDER_PASSWORD in the code")
-        print("   Get app password from: https://myaccount.google.com/apppasswords\n")
-    
     print("="*60)
     
     # Get port from environment variable (for Render)
     port = int(os.environ.get('PORT', 5000))
-    app.run(debug=False, host='0.0.0.0', port=port)
+    app.run(debug=True, host='0.0.0.0', port=port)
